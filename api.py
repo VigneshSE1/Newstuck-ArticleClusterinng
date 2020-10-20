@@ -59,15 +59,15 @@ def findSilhouetteMaxScore(vectorArray):
         end = length - start
 
     silhouetteScore = []
+
     for n_clusters in range((int)(start),(int)(end)): 
         cluster = KMeans(n_clusters = n_clusters) 
         cluster_labels = cluster.fit_predict(vectorArray)
         silhouette_avg = silhouette_score(vectorArray, cluster_labels)
         silhouetteScore.append(silhouette_avg)
-   # print(silhouetteScore)
+    #print(silhouetteScore)
     maxpos = silhouetteScore.index(max(silhouetteScore)) 
-    #print(maxpos+2)
-    return maxpos
+    return maxpos+start
 
 # Cluster the NewsArticle BY K-Means
 def clusterArticleByKMeans(clusterNumber,vectors,newsArticleJson):
@@ -155,5 +155,5 @@ def lanuageDetect_all():
     return  jsonify(result_data)
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=80)
-    app.run()
+    app.run(host='0.0.0.0', port=80)
+    #app.run()
