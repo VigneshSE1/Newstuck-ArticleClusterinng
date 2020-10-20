@@ -48,8 +48,16 @@ def getVectorsFromFastText(titleList,language):
 # Find the Optimal Number Of Cluster using SilhouetteMaxScore Method
 def findSilhouetteMaxScore(vectorArray):
     length = len(vectorArray)
-    start = length//3
-    end = length - start
+    if length == 1:
+        return 1
+    elif length < 10:
+        start = 2
+        end = length
+        
+    elif length >= 10:
+        start = length//3
+        end = length - start
+
     silhouetteScore = []
     for n_clusters in range((int)(start),(int)(end)): 
         cluster = KMeans(n_clusters = n_clusters) 
