@@ -17,7 +17,11 @@ from gensim.models.wrappers import FastText
 from datetime import datetime
 
 from langdetect import detect
-
+# from waitress import serve
+print('loading ta model')
+ta_model = fasttext.load_model("cc.ta.300.bin")
+print('loading en model')
+en_model = fasttext.load_model("cc.en.300.bin")
 
 # Make Array Of Title's
 def getNewsTitlesFromJson(jsonData):
@@ -31,59 +35,75 @@ def getNewsTitlesFromJson(jsonData):
 def getVectorsFromFastText(titleList,language):
     vectorValues = []
     if(language == "ta"):
-        model = fasttext.load_model("D:/Models/cc.ta.300.bin")
+        print('ta')
+
+        model = ta_model
+        print("Tamil Model Loaded")
        
     elif(language == "en"):
-        model = fasttext.load_model("D:/Models/cc.en.300.bin")
+        print('en')
+        model = en_model
+        print("English Model Loaded")
 
     for title in titleList:
-       # print(title)
+        print(title)
         a = model.get_sentence_vector(title)
-        #print(a)
+        # print(a)
         vectorValues.append(a)
 
     numpyVectorArray = np.array(vectorValues)
+    print("NumpyArray Generated")
     return numpyVectorArray
 
 # Find the Optimal Number Of Cluster using SilhouetteMaxScore Method
 def findSilhouetteMaxScore(vectorArray):
+    print("inside findSilhouetteMaxScore")
     length = len(vectorArray)
     if length == 1:
         return 1
     elif length < 10:
-        start = 2
-        end = length
+        # start = 2
+        # end = length
+        return length
         
     elif length >= 10:
-        start = length//3
-        end = length - start
+        # start = length//3
+        # end = length - start
+        print(length)
+        print(length//2)
+        return length//2
 
-    silhouetteScore = []
+    # silhouetteScore = []
 
-    for n_clusters in range((int)(start),(int)(end)): 
-        cluster = KMeans(n_clusters = n_clusters) 
-        cluster_labels = cluster.fit_predict(vectorArray)
-        silhouette_avg = silhouette_score(vectorArray, cluster_labels)
-        silhouetteScore.append(silhouette_avg)
-    #print(silhouetteScore)
-    maxpos = silhouetteScore.index(max(silhouetteScore)) 
-    return maxpos+start
+    # for n_clusters in range((int)(start),(int)(end)): 
+    #     cluster = KMeans(n_clusters = n_clusters) 
+    #     cluster_labels = cluster.fit_predict(vectorArray)
+    #     silhouette_avg = silhouette_score(vectorArray, cluster_labels)
+    #     silhouetteScore.append(silhouette_avg)
+    # #print(silhouetteScore)
+    # maxpos = silhouetteScore.index(max(silhouetteScore))
+    # print("SilhouetteMaxScore found")
+    # return maxpos+start
 
 # Cluster the NewsArticle BY K-Means
 def clusterArticleByKMeans(clusterNumber,vectors,newsArticleJson):
-
+    print("inside clusterArticleByKMeans")
     clf = KMeans(n_clusters = clusterNumber, init = 'k-means++')
     labels = clf.fit_predict(vectors)
 
     for index, newsArticle in enumerate(newsArticleJson):
         labelValue = labels[index] 
         newsArticle["ClusterId"] = int(labelValue)+1
+    print("cluster by kmeans done")
     return sorted(newsArticleJson, key = lambda i: (i['ClusterId']))
 
 def detectLanguage(datas):
+    # print("detect Language Function Called")
     for x in datas:
+            print("inside For")
             language = detect(x["Title"])
             x["Language"] = language
+    # print(datas)
     return datas
 
 # def findElbowFromVector(vectorArray):
@@ -128,12 +148,14 @@ def detectLanguage(datas):
 # Api endPoint
 import flask
 from flask import request, jsonify, Response
+# from werkzeug.contrib.fixers import ProxyFix
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
 @app.route('/api/v1/getcluster', methods=['POST'])
 def cluster_all():
+    print("get Cluster Api Called")
     req_data = request.get_json()
     language = req_data['Language']
     #print("->>>>>>>>>>>>>>>>>>>>" , language)
@@ -149,11 +171,19 @@ def cluster_all():
 
 @app.route('/api/v1/detectlanguage', methods=['POST'])
 def lanuageDetect_all():
+    print("LanguageDetection Api Called")
     req_data = request.get_json()
     #print(req_data)
     result_data = detectLanguage(req_data)
     return  jsonify(result_data)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
-    #app.run()
+def run():
+    # global global_fn_main
+    # global_fn_main = fn_main
+    # app.run(debug = False, port = 8080, host = '0.0.0.0', threaded = True)
+# app.wsgi_app = ProxyFix(app.wsgi_app)
+# if __name__ == '__main__':
+    app.run(debug = False, port = 80, host = '0.0.0.0', threaded = True)
+#     app.run(host='0.0.0.0', port=80)
+    # app.run()
+    # serve(app, host='127.0.0.1', port=5000)
