@@ -3,7 +3,7 @@ import json
 datas =[]
 
 def getNewsArticlesJson():
-    file  = open("D:/NewsTuck_Application/NewsTuck-Clustering/05-10-2020.json",encoding="utf8")
+    file  = open("D:/NewsTuck_Application/Newstuck-ArticleClusterinng/DataSets/04-11-2020.json",encoding="utf8")
     datas = json.load(file)
     return datas
 
@@ -17,9 +17,9 @@ def writeClsuterdJson(datas):
         if(data["language"] == "en"):
             englishAticles.append(data)
 
-    with open('D:/NewsTuck_Application/NewsTuck-Clustering/05-10-2020Tamil.json', 'w', encoding='utf-8') as f:
+    with open('D:/NewsTuck_Application/Newstuck-ArticleClusterinng/DataSets/04-11-2020Tamil.json', 'w', encoding='utf-8') as f:
         json.dump(tamilArticles, f, ensure_ascii=False, indent=4)
-    with open('D:/NewsTuck_Application/NewsTuck-Clustering/05-10-2020English.json', 'w', encoding='utf-8') as f:
+    with open('D:/NewsTuck_Application/Newstuck-ArticleClusterinng/DataSets/04-11-2020English.json', 'w', encoding='utf-8') as f:
         json.dump(englishAticles, f, ensure_ascii=False, indent=4)
 
 datas = getNewsArticlesJson()
