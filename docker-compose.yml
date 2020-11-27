@@ -10,7 +10,7 @@ services:
 
   clustering_api:
     build: ./
-    image: myregistry.azurecr.io/clustering_api
+    image: prodonemindindiaacr.azurecr.io/newstuck/clustering-api:2.0
     container_name: clustering_api
     environment:
       REDIS: redis
