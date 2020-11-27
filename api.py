@@ -23,6 +23,15 @@ from urllib.request import urlopen
 import sys
 import os
 
+# new imports
+import pandas as pd
+from datetime import datetime, timedelta
+import dateutil
+import redis
+import os
+import logging
+
+
 # logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
 # from waitress import serve
@@ -177,6 +186,7 @@ def _print_progress(downloaded_bytes, total_size):
 
     if downloaded_bytes >= total_size:
         sys.stdout.write('\n')
+
 # def findElbowFromVector(vectorArray):
 #     # elbow=[]
 #     # for i in range(1, len(vectorArray)):
@@ -216,6 +226,89 @@ def _print_progress(downloaded_bytes, total_size):
 #     plt.title('The Elbow Method using Distortion') 
 #     plt.show()
 
+# Incremental Clustering
+def incrementalSilhouetteMaxScore(vectors_old, vectors_new, existing_k = None):
+    if len(vectors_old) == 0:
+        vectorArray = vectors_new
+    elif len(vectors_new) == 0:
+        vectorArray = vectors_old
+    else: 
+        vectorArray = vectors_old + vectors_new
+    
+    length = len(vectorArray)
+    
+    if existing_k:
+        start = existing_k
+        end = existing_k + len(vectors_new)
+    else:
+        logging.info('K value not found in redis-server')
+        if length == 1:
+            return 1
+        elif length < 10:
+            start = 2
+            end = length
+            # return length    
+        elif length >= 10:
+            start = length//5
+            end = max(length//3, 10)
+            # logging.info(length)
+            # logging.info(length//2)
+            # return length//2
+        logging.info(f'Initializing range ({str(start)}, {str(end)}) for Silhoutte method.') 
+
+    silhouetteScore = []
+    
+    for n_clusters in range((int)(start),(int)(end)): 
+        cluster = KMeans(n_clusters = n_clusters) 
+        cluster_labels = cluster.fit_predict(vectorArray)
+        silhouette_avg = silhouette_score(vectorArray, cluster_labels)
+        silhouetteScore.append(silhouette_avg)
+    
+    if silhouetteScore:
+        maxpos = silhouetteScore.index(max(silhouetteScore))
+        logging.info("SilhouetteMaxScore found")
+        return maxpos+start, vectorArray
+    else:
+        return existing_k, vectorArray
+        
+def get_k_value(redis_client, redis_key, language):
+    try:
+        config = redis_client.get(redis_key)
+        logging.info("Config from redis :")
+        logging.info(config)
+        if config:
+            config = json.loads(config.decode('utf-8'))
+            return config[language]['no_of_clusters'] 
+        else:
+            return config
+    except Exception as e:
+        logging.info('Error while getting config')
+        logging.info(str(e))
+        return None
+
+def put_k_value(redis_client, noOfClusters, redis_key, language):
+    try:
+        config = redis_client.get(redis_key)
+        if config:
+            config = json.loads(config.decode('utf-8'))
+            temp = {
+                language:
+                    {   
+                    'no_of_clusters': noOfClusters 
+                }}
+            config = {**config, **temp}
+            redis_client.set(redis_key, json.dumps(config))
+        else:
+            config = {language:
+                {
+                    'no_of_clusters': noOfClusters 
+                }}
+            redis_client.set(redis_key, json.dumps(config))
+    except Exception as e:
+        logging.info('Error while putting config')
+        logging.info(e)
+
+
 # Api endPoint
 import flask
 from flask import request, jsonify, Response
@@ -226,16 +319,48 @@ app.config["DEBUG"] = True
 
 @app.route('/api/v1/getcluster', methods=['POST'])
 def cluster_all():
-    logging.info('Get Cluster API Called')
+    logging.info("get Cluster Api Called")
     req_data = request.get_json()
     language = req_data['Language']
+    #logging.info("->>>>>>>>>>>>>>>>>>>>" , language)
     jsonTitles = req_data['Titles']
-    newsTitles = getNewsTitlesFromJson(jsonTitles)
-    newsVectors = getVectorsFromFastText(newsTitles,language)
-    noOfClusters = findSilhouetteMaxScore(newsVectors)
+
+    # Seggregating data according to timestamp
+    title_df = pd.DataFrame(jsonTitles)
+    title_df['PublishDate'] = title_df['PublishDate'].apply(
+        lambda x: dateutil.parser.parse(x))
+    # put 20 minutes considering scrapper latency=0, needs to be adjusted accordingly
+    current_utc = datetime.utcnow() 
+    adjusted_utc = current_utc - timedelta(hours=0, minutes= 20)
+    current_date = current_utc.date()
+    time_mask = title_df['PublishDate'] < adjusted_utc
+    old_titles = list(title_df[time_mask].Title)
+    new_titles = list(title_df[~time_mask].Title)
+
+
+
+    #logging.info("->>>>>>>>>>>>>>>>>>>>" , jsonTitles)
+    # old_titles = getNewsTitlesFromJson(old_titles)
+    # new_titles = getNewsTitlesFromJson(new_titles)
+
+    old_vectors = getVectorsFromFastText(old_titles, language)
+    new_vectors = getVectorsFromFastText(new_titles, language)
+    redis_key = "apicall_"+str(current_date)
+    logging.info(f"redis_key :")
+    logging.info(redis_key)
+    # connecting to redis client
+    redis_server = os.environ['REDIS']
+    redis_client = redis.Redis(redis_server)
+    existing_k = get_k_value(redis_client, redis_key, language)
+    logging.info("existing_k")
+    logging.info(existing_k)
+    #findElbowFromVector(newsVectors)
+    # noOfClusters = findSilhouetteMaxScore(newsVectors)
+    noOfClusters, newsVectors = incrementalSilhouetteMaxScore(old_vectors, new_vectors, existing_k)
+    put_k_value(redis_client, noOfClusters, redis_key, language)
+
     clusteredJson = clusterArticleByKMeans(noOfClusters,newsVectors,jsonTitles)
     clusteredJsonResult = json.dumps(clusteredJson,ensure_ascii=False,indent=4)
-    logging.info('Cluster Result Sent')
     return clusteredJsonResult
 
 @app.route('/api/v1/detectlanguage', methods=['POST'])
