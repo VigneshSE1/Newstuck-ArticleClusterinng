@@ -1,0 +1,18 @@
+version: '3'
+services:
+  redis:
+    image: mcr.microsoft.com/oss/bitnami/redis:6.0.8
+    container_name: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+        - "6379:6379"
+
+  clustering_api:
+    build: ./
+    image: myregistry.azurecr.io/clustering_api
+    container_name: clustering_api
+    environment:
+      REDIS: redis
+    ports:
+        - "80:80"
