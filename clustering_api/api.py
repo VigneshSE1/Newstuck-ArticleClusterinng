@@ -350,6 +350,7 @@ def cluster_all():
     logging.info(redis_key)
     # connecting to redis client
     redis_server = os.environ['REDIS']
+    # redis_client = redis.Redis('redis', port=6379)
     redis_client = redis.Redis(redis_server)
     existing_k = get_k_value(redis_client, redis_key, language)
     logging.info("existing_k")

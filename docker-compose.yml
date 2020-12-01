@@ -9,7 +9,7 @@ services:
         - "6379:6379"
 
   clustering_api:
-    build: ./
+    build: ./clustering_api
     image: prodonemindindiaacr.azurecr.io/newstuck/clustering-api:2.0
     container_name: clustering_api
     environment:
