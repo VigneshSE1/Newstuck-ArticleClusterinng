@@ -1,6 +1,5 @@
 FROM python:3.8
 
-ENV REDIS=redis
 COPY requirements.txt /
 RUN pip install -r requirements.txt
 # COPY cc.ta.100.bin /

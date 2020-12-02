@@ -227,19 +227,13 @@ def _print_progress(downloaded_bytes, total_size):
 #     plt.show()
 
 # Incremental Clustering
-def incrementalSilhouetteMaxScore(vectors_old, vectors_new, existing_k = None):
-    if len(vectors_old) == 0:
-        vectorArray = vectors_new
-    elif len(vectors_new) == 0:
-        vectorArray = vectors_old
-    else: 
-        vectorArray = vectors_old + vectors_new
-    
+def incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters = None):
+
     length = len(vectorArray)
     
-    if existing_k:
-        start = existing_k
-        end = existing_k + len(vectors_new)
+    if existing_noOfClusters:
+        start = existing_noOfClusters
+        end = existing_noOfClusters + max(length - prev_count, 0)
     else:
         logging.info('K value not found in redis-server')
         if length == 1:
@@ -269,7 +263,7 @@ def incrementalSilhouetteMaxScore(vectors_old, vectors_new, existing_k = None):
         logging.info("SilhouetteMaxScore found")
         return maxpos+start, vectorArray
     else:
-        return existing_k, vectorArray
+        return existing_noOfClusters, vectorArray
         
 def get_k_value(redis_client, redis_key, language):
     try:
@@ -278,7 +272,7 @@ def get_k_value(redis_client, redis_key, language):
         logging.info(config)
         if config:
             config = json.loads(config.decode('utf-8'))
-            return config[language]['no_of_clusters'] 
+            return config[language]['no_of_clusters'], config[language]['prev_count'] 
         else:
             return config
     except Exception as e:
@@ -286,7 +280,7 @@ def get_k_value(redis_client, redis_key, language):
         logging.info(str(e))
         return None
 
-def put_k_value(redis_client, noOfClusters, redis_key, language):
+def put_k_value(redis_client, noOfClusters, length, redis_key, language):
     try:
         config = redis_client.get(redis_key)
         if config:
@@ -294,14 +288,16 @@ def put_k_value(redis_client, noOfClusters, redis_key, language):
             temp = {
                 language:
                     {   
-                    'no_of_clusters': noOfClusters 
+                    'no_of_clusters': noOfClusters,
+                    'prev_count': length
                 }}
             config = {**config, **temp}
             redis_client.set(redis_key, json.dumps(config))
         else:
             config = {language:
                 {
-                    'no_of_clusters': noOfClusters 
+                    'no_of_clusters': noOfClusters,
+                    'prev_count': length
                 }}
             redis_client.set(redis_key, json.dumps(config))
     except Exception as e:
@@ -325,40 +321,34 @@ def cluster_all():
     #logging.info("->>>>>>>>>>>>>>>>>>>>" , language)
     jsonTitles = req_data['Titles']
 
-    # Seggregating data according to timestamp
-    title_df = pd.DataFrame(jsonTitles)
-    title_df['PublishDate'] = title_df['PublishDate'].apply(
-        lambda x: dateutil.parser.parse(x))
-    # put 20 minutes considering scrapper latency=0, needs to be adjusted accordingly
+    vectorArray = getVectorsFromFastText(getNewsTitlesFromJson(jsonTitles), language)
+
     current_utc = datetime.utcnow() 
-    adjusted_utc = current_utc - timedelta(hours=0, minutes= 20)
     current_date = current_utc.date()
-    time_mask = title_df['PublishDate'] < adjusted_utc
-    old_titles = list(title_df[time_mask].Title)
-    new_titles = list(title_df[~time_mask].Title)
 
-
-
-    #logging.info("->>>>>>>>>>>>>>>>>>>>" , jsonTitles)
-    # old_titles = getNewsTitlesFromJson(old_titles)
-    # new_titles = getNewsTitlesFromJson(new_titles)
-
-    old_vectors = getVectorsFromFastText(old_titles, language)
-    new_vectors = getVectorsFromFastText(new_titles, language)
     redis_key = "apicall_"+str(current_date)
     logging.info(f"redis_key :")
     logging.info(redis_key)
-    # connecting to redis client
-    redis_server = os.environ['REDIS']
-    # redis_client = redis.Redis('redis', port=6379)
-    redis_client = redis.Redis(redis_server)
-    existing_k = get_k_value(redis_client, redis_key, language)
-    logging.info("existing_k")
-    logging.info(existing_k)
+    
+    # Connecting to redis client
+    redis_client = redis.Redis('localhost')
+    
+    # Loading existing values in the redis server
+    output = get_k_value(redis_client, redis_key, language)
+    if output:
+        existing_noOfClusters, prev_count = output
+    else:
+        existing_noOfClusters, prev_count = None, 0
+    
+    logging.info("existing_noOfClusters")
+    logging.info(existing_noOfClusters)
+    logging.info("prev_count")
+    logging.info(prev_count)
+    
     #findElbowFromVector(newsVectors)
     # noOfClusters = findSilhouetteMaxScore(newsVectors)
-    noOfClusters, newsVectors = incrementalSilhouetteMaxScore(old_vectors, new_vectors, existing_k)
-    put_k_value(redis_client, noOfClusters, redis_key, language)
+    noOfClusters, newsVectors = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
+    put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language)
 
     clusteredJson = clusterArticleByKMeans(noOfClusters,newsVectors,jsonTitles)
     clusteredJsonResult = json.dumps(clusteredJson,ensure_ascii=False,indent=4)
