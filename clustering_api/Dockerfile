@@ -8,4 +8,8 @@ RUN pip install -r requirements.txt
 
 COPY wsgi.py /
 COPY api.py /
+COPY svc_classification.py /
+COPY utils.py /
+COPY /Pickles /Pickles
+
 CMD ["gunicorn", "-b", "0.0.0.0:80", "--timeout=1000", "wsgi:app"]
