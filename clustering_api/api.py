@@ -25,12 +25,14 @@ import os
 
 # new imports
 import pandas as pd
-from datetime import datetime, timedelta
 import dateutil
 import redis
 import os
 import logging
 
+from datetime import datetime, timedelta
+from utils import get_titles_categorywise
+from collections import defaultdict
 
 # logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
@@ -265,14 +267,14 @@ def incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters
     else:
         return existing_noOfClusters, vectorArray
         
-def get_k_value(redis_client, redis_key, language):
+def get_k_value(redis_client, redis_key, language, category):
     try:
         config = redis_client.get(redis_key)
         logging.info("Config from redis :")
         logging.info(config)
         if config:
             config = json.loads(config.decode('utf-8'))
-            return config[language]['no_of_clusters'], config[language]['prev_count'] 
+            return config[language][category]['no_of_clusters'], config[language][category]['prev_count'] 
         else:
             return config
     except Exception as e:
@@ -280,26 +282,23 @@ def get_k_value(redis_client, redis_key, language):
         logging.info(str(e))
         return None
 
-def put_k_value(redis_client, noOfClusters, length, redis_key, language):
+def put_k_value(redis_client, noOfClusters, length, redis_key, language, category):
     try:
         config = redis_client.get(redis_key)
         if config:
-            config = json.loads(config.decode('utf-8'))
-            temp = {
-                language:
-                    {   
-                    'no_of_clusters': noOfClusters,
-                    'prev_count': length
-                }}
-            config = {**config, **temp}
-            redis_client.set(redis_key, json.dumps(config))
+            config = defaultdict(dict, json.loads(config.decode('utf-8')))
+            config[language][category] = {
+                            'no_of_clusters': noOfClusters,
+                            'prev_count': length
+                            }
+            redis_client.set(redis_key, json.dumps(dict(config)))
         else:
-            config = {language:
-                {
-                    'no_of_clusters': noOfClusters,
-                    'prev_count': length
-                }}
-            redis_client.set(redis_key, json.dumps(config))
+            config = defaultdict(dict)
+            config[language][category] = {
+                            'no_of_clusters': noOfClusters,
+                            'prev_count': length
+                            }
+            redis_client.set(redis_key, json.dumps(dict(config)))
     except Exception as e:
         logging.info('Error while putting config')
         logging.info(e)
@@ -321,8 +320,7 @@ def cluster_all():
     #logging.info("->>>>>>>>>>>>>>>>>>>>" , language)
     jsonTitles = req_data['Titles']
 
-    vectorArray = getVectorsFromFastText(getNewsTitlesFromJson(jsonTitles), language)
-
+    
     current_utc = datetime.utcnow() 
     current_date = current_utc.date()
 
@@ -332,26 +330,36 @@ def cluster_all():
     
     # Connecting to redis client
     redis_client = redis.Redis('localhost')
+
+    # Seggregating list of titles category-wise into a dictionary
+    title_category_dict = get_titles_categorywise(jsonTitles)
+
+    clusteredJsonResult = {}
+    for category, article_data_list in title_category_dict.items():
+        titles_list = getNewsTitlesFromJson(article_data_list)
+        vectorArray = getVectorsFromFastText(titles_list, language)
+
+        # Loading existing values in the redis server
+        output = get_k_value(redis_client, redis_key, language, category)
+        if output:
+            existing_noOfClusters, prev_count = output
+        else:
+            existing_noOfClusters, prev_count = None, 0
     
-    # Loading existing values in the redis server
-    output = get_k_value(redis_client, redis_key, language)
-    if output:
-        existing_noOfClusters, prev_count = output
-    else:
-        existing_noOfClusters, prev_count = None, 0
+        logging.info(f"existing_noOfClusters: {existing_noOfClusters}")
+        logging.info(f"category: {category}")
+        logging.info(f"prev_count: {prev_count}")
     
-    logging.info("existing_noOfClusters")
-    logging.info(existing_noOfClusters)
-    logging.info("prev_count")
-    logging.info(prev_count)
-    
+        noOfClusters, newsVectors = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
+        put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language, category)
+
+        # This will have all list of article data seggregated by category-wise keys
+        clusteredJsonResult[category] = clusterArticleByKMeans(noOfClusters,newsVectors,article_data_list)
+
     #findElbowFromVector(newsVectors)
     # noOfClusters = findSilhouetteMaxScore(newsVectors)
-    noOfClusters, newsVectors = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
-    put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language)
 
-    clusteredJson = clusterArticleByKMeans(noOfClusters,newsVectors,jsonTitles)
-    clusteredJsonResult = json.dumps(clusteredJson,ensure_ascii=False,indent=4)
+    clusteredJsonResult = json.dumps(clusteredJsonResult,ensure_ascii=False,indent=4)
     return clusteredJsonResult
 
 @app.route('/api/v1/detectlanguage', methods=['POST'])

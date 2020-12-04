@@ -3,6 +3,18 @@ import requests
 
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
 
+# Codes will change as when the model is updated.
+category_codes = {
+    0: 'Business',
+    1: 'Entertainment',
+    2: 'Politics',
+    3: 'Sports',
+    4: 'Technology',
+    5: 'Others'
+    }
+
+category_names = [v for k,v in category_codes.items()]
+
 # Make Array Of Title's
 def getNewsTitlesFromJson(jsonData):
     ArrayOfSentence = []
@@ -19,3 +31,18 @@ def get_summary(url):
         return summary_dict['text']
     else:
         return ''
+
+def get_titles_categorywise(titles_list):
+    title_category_dict = {}
+    logging.info(f'Received titles_list in get_titles_categorywise()')
+    for _, article_data in enumerate(titles_list):
+        categories = article_data['category']
+        print(categories)
+        for category in categories:
+            if category in category_names:
+                if category in title_category_dict.keys():
+                    title_category_dict[category].append(article_data)
+                else:
+                    title_category_dict[category] = [article_data]
+    logging.info(f'Seggregated titles_list category-wise.')
+    return title_category_dict

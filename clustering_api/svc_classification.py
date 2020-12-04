@@ -8,22 +8,12 @@ import numpy as np
 from tqdm import tqdm 
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from utils import get_summary
+from utils import get_summary, category_codes
 
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
 
 punctuation_signs = list("?:!.,;")
 stop_words = list(stopwords.words('english'))
-
-# Codes will change as when the model is updated.
-category_codes = {
-    0: 'business',
-    1: 'entertainment',
-    2: 'politics',
-    3: 'sport',
-    4: 'tech',
-    5: 'other'
-    }
 
 #Loading Models
 model_path = "Pickles/"
