@@ -371,6 +371,27 @@ def lanuageDetect_all():
     logging.info('Language Detection Result Sent')
     return  jsonify(result_data)
 
+from utils import getNewsTitlesFromJson
+from svc_classification import get_feature_df, create_features_from_df, predict_from_features
+
+@app.route('/api/v1/classify', methods=['POST'])
+def classify():
+    logging.info("Classification Api Called")
+    req_data = request.get_json()
+    language = req_data['Language']
+    jsonTitles = req_data['Titles']
+
+    titles_list = getNewsTitlesFromJson(jsonTitles)
+
+    df_features, df_show_info = get_feature_df(titles_list)
+    features = create_features_from_df(df_features)
+    categories, predictions_proba_max = predict_from_features(features)
+
+    for idx, title_data in enumerate(titles_list):
+        titles_list[idx]['category'] = categories[idx]
+
+    return jsonify(titles_list)
+    
 def run():
     # global global_fn_main
     # global_fn_main = fn_main
