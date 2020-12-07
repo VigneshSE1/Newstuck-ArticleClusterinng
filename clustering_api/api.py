@@ -31,7 +31,7 @@ import os
 import logging
 
 from datetime import datetime, timedelta
-from utils import get_titles_categorywise, translate_text
+from utils import get_titles_categorywise, translate_text, valid_string
 from collections import defaultdict
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -380,13 +380,13 @@ def classify():
     req_data = request.get_json()
     language = req_data['Language']
     jsonTitles = req_data['Titles']
-
-        
+    
     titles_list = getNewsTitlesFromJson(jsonTitles)
     if language == 'ta':
         # Converting tamil summaries to English for classification
         for idx, title_info in enumerate(titles_list):
-            titles_list[idx]['summary'] = translate_text(title_info['summary'])
+            clean_text = valid_string(title_info['summary'])
+            titles_list[idx]['summary'] = translate_text(clean_text)
 
     df_features, df_show_info = get_feature_df(titles_list)
     features = create_features_from_df(df_features)

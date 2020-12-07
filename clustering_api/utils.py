@@ -1,5 +1,6 @@
 import logging
 import requests
+import string
 
 from googletrans import Translator
 
@@ -50,7 +51,15 @@ def get_titles_categorywise(titles_list):
     logging.info(f'Seggregated titles_list category-wise.')
     return title_category_dict
 
+def valid_string(s):
+    s = s.translate(string.punctuation)
+    s = s.replace('\u200c', '')
+    # s = re.sub('[^\w : ]+', '', s)
+    s = s.replace('_','')
+    s = s.strip()
+    return s
+
 def translate_text(text):
     translated_text = translator.translate(text, src= 'ta', dest= 'en')
-    return text
+    return translated_text
 
