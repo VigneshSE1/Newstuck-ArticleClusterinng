@@ -1,6 +1,9 @@
 import logging
 import requests
 
+from googletrans import Translator
+
+translator = Translator()
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
 
 # Codes will change as when the model is updated.
@@ -46,3 +49,8 @@ def get_titles_categorywise(titles_list):
                     title_category_dict[category] = [article_data]
     logging.info(f'Seggregated titles_list category-wise.')
     return title_category_dict
+
+def translate_text(text):
+    translated_text = translator.translate(text, src= 'ta', dest= 'en')
+    return text
+
