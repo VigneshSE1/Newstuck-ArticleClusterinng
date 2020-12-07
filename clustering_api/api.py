@@ -320,13 +320,14 @@ def cluster_all():
     language = req_data['Language']
     #logging.info("->>>>>>>>>>>>>>>>>>>>" , language)
     jsonTitles = req_data['Titles']
+    unique_id = req_data['UUID']
 
     vectorArray = getVectorsFromFastText(getNewsTitlesFromJson(jsonTitles), language)
 
     current_utc = datetime.utcnow() 
     current_date = current_utc.date()
 
-    redis_key = "apicall_"+str(current_date)
+    redis_key = f"{unique_id}_"+str(current_date)
     logging.info(f"redis_key :")
     logging.info(redis_key)
     
