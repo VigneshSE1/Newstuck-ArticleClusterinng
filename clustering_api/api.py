@@ -392,7 +392,7 @@ def classify():
     features = create_features_from_df(df_features)
     categories, predictions_proba_max = predict_from_features(features)
 
-    for idx, title_data in enumerate(titles_list):
+    for idx in range(len(titles_list)):
         titles_list[idx]['category'] = categories[idx]
 
     return jsonify(titles_list)
