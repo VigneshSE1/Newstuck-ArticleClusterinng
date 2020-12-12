@@ -60,6 +60,6 @@ def valid_string(s):
     return s
 
 def translate_text(text):
-    translated_text = translator.translate(text, src= 'ta', dest= 'en')
+    translated_text = translator.translate(text, src= 'ta', dest= 'en').text
     return translated_text
 

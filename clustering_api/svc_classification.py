@@ -36,7 +36,7 @@ def get_feature_df(titles_list):
         list_titles.append(item['Title'])
         list_links.append(item['Href'])
         list_sources.append(item['Source'])
-        news_contents.append(get_summary(item['Href']))
+        news_contents.append(item['summary'])
 
     df_features = pd.DataFrame(
             {'Content': news_contents 
