@@ -42,9 +42,9 @@ model = None
 def getNewsTitlesFromJson(jsonData):
     ArrayOfSentence = []
     for data in jsonData:
-        splittedSentence = data["Title"]
+        splittedSentence = data["summary"]
         ArrayOfSentence.append(splittedSentence)
-    logging.info('NewsTitles Generated From Json')
+    logging.info('Summaries Generated From Json')
     return ArrayOfSentence
 
 # Generate VectorForms as NumPy Array Using FastText Model
