@@ -31,6 +31,8 @@ import redis
 import os
 import logging
 
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 
 # logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
@@ -38,14 +40,36 @@ logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=log
 model_lang = None
 model = None
 
+punctuation_signs = list("?:!.,;")
+stop_words = list(stopwords.words('english'))
+
 # Make Array Of Title's
 def getNewsTitlesFromJson(jsonData):
     ArrayOfSentence = []
     for data in jsonData:
-        splittedSentence = data["summary"]
+        splittedSentence = clean_text(data["Summary"])
         ArrayOfSentence.append(splittedSentence)
     logging.info('Summaries Generated From Json')
     return ArrayOfSentence
+
+def clean_text(text):
+    text = text.replace("\r", " ")
+    text = text.replace("\n", " ")
+    text = text.replace("    ", " ")
+    text = text.replace('"', '')
+    text = text.lower()
+    for punct_sign in punctuation_signs:
+        text = text.replace(punct_sign, '')
+    wordnet_lemmatizer = WordNetLemmatizer()
+    text_list = []
+    for word in text.split(' '):
+        text_list.append(wordnet_lemmatizer.lemmatize(word, pos="v"))
+    text = ' '.join(text_list)
+
+    for stop_word in stop_words:
+        regex_stopword = r"\b" + stop_word + r"\b"
+        text = text.replace(regex_stopword, '')
+    return text
 
 # Generate VectorForms as NumPy Array Using FastText Model
 def getVectorsFromFastText(titleList,language):
