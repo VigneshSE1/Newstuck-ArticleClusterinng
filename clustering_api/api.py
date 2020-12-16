@@ -35,6 +35,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
 nltk.download('stopwords')
+nltk.download('wordnet')
 
 # logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='[%Y-%m-%d %H:%M:%S +0000]')
@@ -55,23 +56,25 @@ def getNewsTitlesFromJson(jsonData):
     return ArrayOfSentence
 
 def clean_text(text):
-    text = text.replace("\r", " ")
-    text = text.replace("\n", " ")
-    text = text.replace("    ", " ")
-    text = text.replace('"', '')
-    text = text.lower()
-    for punct_sign in punctuation_signs:
-        text = text.replace(punct_sign, '')
-    wordnet_lemmatizer = WordNetLemmatizer()
-    text_list = []
-    for word in text.split(' '):
-        text_list.append(wordnet_lemmatizer.lemmatize(word, pos="v"))
-    text = ' '.join(text_list)
+    if text:
+        text = text.replace("\r", " ")
+        text = text.replace("\n", " ")
+        text = text.replace("    ", " ")
+        text = text.replace('"', '')
+        text = text.lower()
+        for punct_sign in punctuation_signs:
+            text = text.replace(punct_sign, '')
+        wordnet_lemmatizer = WordNetLemmatizer()
+        text_list = []
+        for word in text.split(' '):
+            text_list.append(wordnet_lemmatizer.lemmatize(word, pos="v"))
+        text = ' '.join(text_list)
 
-    for stop_word in stop_words:
-        regex_stopword = r"\b" + stop_word + r"\b"
-        text = text.replace(regex_stopword, '')
-    return text
+        for stop_word in stop_words:
+            regex_stopword = r"\b" + stop_word + r"\b"
+            text = text.replace(regex_stopword, '')
+        return text
+    return ''
 
 # Generate VectorForms as NumPy Array Using FastText Model
 def getVectorsFromFastText(titleList,language):
