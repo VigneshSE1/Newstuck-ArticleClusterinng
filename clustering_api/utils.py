@@ -28,6 +28,14 @@ def getNewsTitlesFromJson(jsonData):
     logging.info('NewsTitles Generated From Json')
     return ArrayOfSentence
 
+def getNewsSummariesFromJson(jsonData):
+    ArrayOfSentence = []
+    for data in jsonData:
+        splittedSentence = data["Summary"]
+        ArrayOfSentence.append(splittedSentence)
+    logging.info('Summaries Generated From Json')
+    return ArrayOfSentence
+
 def get_summary(url):
     response = requests.get('http://52.188.110.40:8090/extract', params = {'url': url})
     if response.status_code == 200:

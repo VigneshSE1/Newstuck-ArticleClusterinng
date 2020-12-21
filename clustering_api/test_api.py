@@ -31,7 +31,7 @@ import os
 import logging
 
 from datetime import datetime, timedelta
-from utils import get_titles_categorywise, translate_text, valid_string, getNewsTitlesFromJson, getNewsSummariesFromJson
+from utils import get_titles_categorywise, translate_text, valid_string
 from collections import defaultdict
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -39,6 +39,23 @@ logging.basicConfig( format='%(asctime)s %(levelname)-8s %(message)s', level=log
 # from waitress import serve
 model_lang = None
 model = None
+
+# Make Array Of Title's
+def getNewsTitlesFromJson(jsonData):
+    ArrayOfSentence = []
+    for data in jsonData:
+        splittedSentence = data["Title"]
+        ArrayOfSentence.append(splittedSentence)
+    logging.info('NewsTitles Generated From Json')
+    return ArrayOfSentence
+
+def getNewsSummariesFromJson(jsonData):
+    ArrayOfSentence = []
+    for data in jsonData:
+        splittedSentence = data["Summary"]
+        ArrayOfSentence.append(splittedSentence)
+    logging.info('Summaries Generated From Json')
+    return ArrayOfSentence
 
 # Generate VectorForms as NumPy Array Using FastText Model
 def getVectorsFromFastText(titleList,language):
@@ -224,14 +241,15 @@ def incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters
 
     length = len(vectorArray)
     
+    if length < 6:
+        return length
     if existing_noOfClusters:
         start = existing_noOfClusters
         end = existing_noOfClusters + max(length - prev_count, 0)
     else:
         logging.info('K value not found in redis-server')
-        if length == 1:
-            return 1
-        elif length < 10:
+        # if length == 1 or length == 2:
+        if length < 10:
             start = 2
             end = length
             # return length    
@@ -241,7 +259,7 @@ def incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters
             # logging.info(length)
             # logging.info(length//2)
             # return length//2
-        logging.info(f'Initializing range ({str(start)}, {str(end)}) for Silhoutte method.') 
+    logging.info(f'Initializing range ({str(start)}, {str(end)}) for Silhoutte method.') 
 
     silhouetteScore = []
     
@@ -254,9 +272,9 @@ def incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters
     if silhouetteScore:
         maxpos = silhouetteScore.index(max(silhouetteScore))
         logging.info("SilhouetteMaxScore found")
-        return maxpos+start, vectorArray
+        return maxpos+start
     else:
-        return existing_noOfClusters, vectorArray
+        return existing_noOfClusters
         
 def get_k_value(redis_client, redis_key, language, category):
     try:
@@ -294,7 +312,7 @@ def put_k_value(redis_client, noOfClusters, length, redis_key, language, categor
         logging.info('Error while putting config')
         logging.info(e)
 
-
+#%%
 # Api endPoint
 import flask
 from flask import request, jsonify, Response
@@ -315,42 +333,52 @@ def cluster_all():
     current_utc = datetime.utcnow() 
     current_date = current_utc.date()
 
-    redis_key = "apicall_"+str(current_date)
     logging.info(f"redis_key :")
     logging.info(redis_key)
     
     # Connecting to redis client
+#%%
     redis_client = redis.Redis('localhost')
-
-    # Seggregating list of titles category-wise into a dictionary
-    title_category_dict = get_titles_categorywise(jsonTitles)
-
-    clusteredJsonResult = {}
-    for category, article_data_list in title_category_dict.items():
-        titles_list = getNewsSummariesFromJson(article_data_list)
-        vectorArray = getVectorsFromFastText(titles_list, language)
-
-        # Loading existing values in the redis server
-        output = get_k_value(redis_client, redis_key, language, category)
-        if output:
-            existing_noOfClusters, prev_count = output
-        else:
-            existing_noOfClusters, prev_count = None, 0
-    
-        logging.info(f"existing_noOfClusters: {existing_noOfClusters}")
-        logging.info(f"category: {category}")
-        logging.info(f"prev_count: {prev_count}")
-    
-        noOfClusters, newsVectors = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
-        put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language, category)
-
-        # This will have all list of article data seggregated by category-wise keys
-        clusteredJsonResult[category] = clusterArticleByKMeans(noOfClusters,newsVectors,article_data_list)
-
-    #findElbowFromVector(newsVectors)
-    # noOfClusters = findSilhouetteMaxScore(newsVectors)
-
-    clusteredJsonResult = json.dumps(clusteredJsonResult,ensure_ascii=False,indent=4)
+    daywise_result= []
+    for idx, day_batch in enumerate(en_batches_daywise):
+        for batch in day_batch:
+            redis_key = f"day{str(idx+1)}"
+            jsonTitles = batch
+            # Seggregating list of titles category-wise into a dictionary
+            title_category_dict = get_titles_categorywise(jsonTitles)
+        
+            clusteredJsonResult = {}
+            for category, article_data_list in title_category_dict.items():
+                titles_list = getNewsSummariesFromJson(article_data_list)
+                vectorArray = getVectorsFromFastText(titles_list, language)
+        
+                # Loading existing values in the redis server
+                output = get_k_value(redis_client, redis_key, language, category)
+                if output:
+                    existing_noOfClusters, prev_count = output
+                else:
+                    existing_noOfClusters, prev_count = None, 0
+            
+                logging.info(f"existing_noOfClusters: {existing_noOfClusters}")
+                logging.info(f"category: {category}")
+                logging.info(f"prev_count: {prev_count}")
+            
+                noOfClusters = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
+                
+        
+                # This will have all list of article data seggregated by category-wise keys
+                clusteredJsonResult[category] = clusterArticleByKMeans(noOfClusters,vectorArray,article_data_list)
+                if noOfClusters != 1:
+                #     put_k_value(redis_client, 2, 0, redis_key, language, category)
+                # else:
+                    put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language, category)
+                    
+            #findElbowFromVector(newsVectors)
+            # noOfClusters = findSilhouetteMaxScore(newsVectors)
+        
+            clusteredJsonResult = json.dumps(clusteredJsonResult,ensure_ascii=False,indent=4)
+        daywise_result.append(clusteredJsonResult)
+#%%
     return clusteredJsonResult
 
 @app.route('/api/v1/detectlanguage', methods=['POST'])
@@ -362,6 +390,7 @@ def lanuageDetect_all():
     logging.info('Language Detection Result Sent')
     return  jsonify(result_data)
 
+from utils import getNewsTitlesFromJson
 from svc_classification import get_feature_df, create_features_from_df, predict_from_features
 
 @app.route('/api/v1/classify', methods=['POST'])
@@ -371,16 +400,16 @@ def classify():
     language = req_data['Language']
     titles_list = req_data['Titles']
     
+    titles_list = english_titles
     if language == 'ta':
         # Converting tamil summaries to English for classification
         for idx, title_info in enumerate(titles_list):
             clean_text = valid_string(title_info['summary'])
             titles_list[idx]['summary'] = translate_text(clean_text)
 
-    df_features, df_show_info = get_feature_df(titles_list)
+    df_features = get_feature_df(titles_list)
     features = create_features_from_df(df_features)
     categories, predictions_proba_max = predict_from_features(features)
-
     for idx in range(len(titles_list)):
         titles_list[idx]['category'] = categories[idx]
 

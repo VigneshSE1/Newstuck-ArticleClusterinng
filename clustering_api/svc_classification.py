@@ -29,27 +29,27 @@ with open(path_tfidf, 'rb') as data:
 
 def get_feature_df(titles_list):
     news_contents = []
-    list_titles = []
-    list_links = []
-    list_sources = []
+    # list_titles = []
+    # list_links = []
+    # list_sources = []
     for item in tqdm(titles_list, desc= 'Scraping content from URLs', ncols=100):
-        list_titles.append(item['Title'])
-        list_links.append(item['Href'])
-        list_sources.append(item['Source'])
-        news_contents.append(item['summary'])
+        # list_titles.append(item['Title'])
+        # list_links.append(item['Href'])
+        # list_sources.append(item['Source'])
+        news_contents.append(item['Summary'])
 
     df_features = pd.DataFrame(
             {'Content': news_contents 
             })
 
-    # df_show_info
-    df_show_info = pd.DataFrame(
-        {'Article Title': list_titles,
-        'Article Link': list_links,
-        'Content': news_contents,
-        'Source': list_sources})   
+    # # df_show_info
+    # df_show_info = pd.DataFrame(
+    #     {'Article Title': list_titles,
+    #     'Article Link': list_links,
+    #     'Content': news_contents,
+    #     'Source': list_sources})   
 
-    return df_features, df_show_info     
+    return df_features#, df_show_info     
 
 def create_features_from_df(df):
     
@@ -114,10 +114,13 @@ def predict_from_features(features):
         #     predictions.append(cat)
         # else:
         #     predictions.append(5)
-        cat = np.argmax(prob_arr, axis=0)
+        # MAKING cat A LIST TO HANDLE MULTIPLE CATEGORIES
+        cat = [np.argmax(prob_arr, axis=0)]
         predictions.append(cat)
 
     # Return result
-    categories = [category_codes[x] for x in predictions]
+    categories = []
+    for prediction_list in predictions:
+        categories.append([category_codes[x] for x in prediction_list])
     
     return categories, predictions_proba_max
