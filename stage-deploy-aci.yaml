@@ -1,0 +1,45 @@
+apiVersion: 2019-12-01
+location: southeastasia
+name: newstuckContainerGroup
+properties:
+  imageRegistryCredentials:
+    - server: prodonemindindiaacr.azurecr.io
+      username: ProdOnemindIndiaacr
+      password: Y3o0wJ4D+gMchr2xS5nXOqSlj3RIJ56u
+  containers:
+  - name: stage-omi-clustering-aci
+    properties:
+      image: prodonemindindiaacr.azurecr.io/newstuck/clustering-api:2.0
+      environmentVariables:
+        - name: 'REDIS'
+          value: "nt-redis"
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 6
+      ports:
+      - port: 80
+  - name: stage-omi-redis-aci
+    properties:
+      image: prodonemindindiaacr.azurecr.io/newstuck/redis:6.0.8
+      environmentVariables:
+        - name: 'ALLOW_EMPTY_PASSWORD'
+          value: "yes"
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 2
+      ports:
+      - port: 6379
+  restartPolicy: OnFailure
+  osType: Linux
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: tcp
+      port: 80
+    - protocol: tcp
+      port: 6379
+    dnsNameLabel: stage-newstuck-clustering-api
+tags: {version: 2.0}
+type: Microsoft.ContainerInstance/containerGroups
