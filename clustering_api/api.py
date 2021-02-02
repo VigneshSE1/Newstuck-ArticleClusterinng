@@ -50,7 +50,7 @@ stop_words = list(stopwords.words('english'))
 def getNewsTitlesFromJson(jsonData):
     ArrayOfSentence = []
     for data in jsonData:
-        splittedSentence = clean_text(data["Summary"])
+        splittedSentence = clean_text(data["Title"])
         ArrayOfSentence.append(splittedSentence)
     logging.info('Summaries Generated From Json')
     return ArrayOfSentence
