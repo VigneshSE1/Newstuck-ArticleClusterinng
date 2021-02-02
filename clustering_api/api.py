@@ -351,6 +351,8 @@ def cluster_all():
     jsonTitles = req_data['Titles']
     unique_id = req_data['UUID']
 
+    if not jsonTitles:
+        return "Error - No titles received."
     vectorArray = getVectorsFromFastText(getNewsTitlesFromJson(jsonTitles), language)
 
     current_utc = datetime.utcnow() 
@@ -378,9 +380,8 @@ def cluster_all():
     #findElbowFromVector(newsVectors)
     # noOfClusters = findSilhouetteMaxScore(newsVectors)
     noOfClusters, newsVectors = incrementalSilhouetteMaxScore(vectorArray, prev_count, existing_noOfClusters)
-    put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language)
-
     clusteredJson = clusterArticleByKMeans(noOfClusters,newsVectors,jsonTitles)
+    put_k_value(redis_client, noOfClusters, len(vectorArray), redis_key, language)
     clusteredJsonResult = json.dumps(clusteredJson,ensure_ascii=False,indent=4)
     return clusteredJsonResult
 
