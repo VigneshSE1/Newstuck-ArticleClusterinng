@@ -16,7 +16,7 @@ properties:
       resources:
         requests:
           cpu: 1
-          memoryInGb: 6
+          memoryInGb: 10
       ports:
       - port: 80
   - name: prod-omi-redis-aci

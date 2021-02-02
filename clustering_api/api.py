@@ -89,30 +89,31 @@ def getVectorsFromFastText(titleList,language):
             logging.info('Tamil Model Loading...')
             #model = fasttext.load_model("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/ta/cc.ta.100.bin")
             # fasttext.util.download_model('ta', if_exists='ignore',dimension=100)
-            exists = os.path.isfile('cc.ta.100.bin')
+            exists = os.path.isfile('cc.ta.300.bin')
             if exists:
                  logging.info('Tamil Model Exists')
             else:   
                 logging.info('Tamil Model Downloading...')
-                _download_file("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/ta/cc.ta.100.bin","cc.ta.100.bin")
-                       
+                # _download_file("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/ta/cc.ta.100.bin","cc.ta.100.bin")
+                fasttext.util.download_model('ta', if_exists='ignore')       
             # f = open("cc.ta.100.bin", 'r',encoding='utf-8')
-            model = fasttext.load_model("cc.ta.100.bin")
+            model = fasttext.load_model("cc.ta.300.bin")
             # model = KeyedVectors.load_word2vec_format()
             logging.info('Tamil Model Load Completed')
         
         elif(language == "en") and model_lang != language:
             logging.info('English Model Loading...')
-            exists = os.path.isfile('cc.en.100.bin')
+            exists = os.path.isfile('cc.en.300.bin')
             if exists:
                 logging.info('English Model Exists')
             else:
                 logging.info('English Model Downloading...')
-                _download_file("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/en/cc.en.100.bin","cc.en.100.bin")
+                # _download_file("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/en/cc.en.100.bin","cc.en.100.bin")
+                fasttext.util.download_model('en', if_exists='ignore')
             # fasttext.util.download_model('en', if_exists='ignore',dimension=100) 
             # model = fasttext.load_model("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/en/cc.en.100.bin")
             # f = open("https://stagevoterliststrg.blob.core.windows.net/newstuck-cluster-model/en/cc.en.100.bin", 'r')
-            model = fasttext.load_model("cc.en.100.bin")
+            model = fasttext.load_model("cc.en.300.bin")
             # model = fasttext.load_model("cc.en.100.bin")
             logging.info('English Model LoadComplete')
 
