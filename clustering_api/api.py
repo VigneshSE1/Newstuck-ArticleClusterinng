@@ -363,8 +363,12 @@ def cluster_all():
     logging.info(f"redis_key :")
     logging.info(redis_key)
     
-    # Connecting to redis client
-    redis_client = redis.Redis('localhost')
+    # Local config for redis
+    # redis_client = redis.Redis('localhost')
+
+    # ACI config for redis
+    redis_server = os.environ['REDIS']
+    redis_client = redis.Redis(redis_server)
     
     # Loading existing values in the redis server
     output = get_k_value(redis_client, redis_key, language)
