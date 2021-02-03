@@ -12,11 +12,11 @@ properties:
       image: prodonemindindiaacr.azurecr.io/newstuck/clustering-api:2.0
       environmentVariables:
         - name: 'REDIS'
-          value: "nt-redis"
+          value: "redis"
       resources:
         requests:
           cpu: 1
-          memoryInGb: 10
+          memoryInGb: 9
       ports:
       - port: 80
   - name: prod-omi-redis-aci
